@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import os
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
@@ -67,15 +69,23 @@ def _process_image(output_options: dict, image_file: str, output_name: str):
 def process_images(option: dict, input_dir: str, output_dir: str):
     total_files = sum([len(files) for r, d, files in os.walk(input_dir)])
     progress_bar = tqdm(total=total_files)
-    for root, dirs, files in os.walk(input_dir):
-        for file in files:
-            if file.endswith('.png'):
-                input_file = os.path.join(root, file)
-                rel_path = os.path.relpath(input_file, input_dir)
-                output_file = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(output_file), exist_ok=True)
-                _process_image(option, input_file, output_file)
-                progress_bar.update(1)
+    num_workers = min(5, multiprocessing.cpu_count())
+
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        futures = []
+        for root, dirs, files in os.walk(input_dir):
+            for file in files:
+                if file.endswith('.png'):
+                    input_file = os.path.join(root, file)
+                    rel_path = os.path.relpath(input_file, input_dir)
+                    output_file = os.path.join(output_dir, rel_path)
+                    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                    future = executor.submit(_process_image, option, input_file, output_file)
+                    futures.append(future)
+
+        for future in as_completed(futures):
+            progress_bar.update(1)
+
     progress_bar.close()
 
 
@@ -86,5 +96,5 @@ if __name__ == '__main__':
     }
     work_dir = 'C:\\Users\\Administrator\\Desktop\\PHOENIX-2014-T-release-v3\\PHOENIX-2014-T\\features\\fullFrame-210x260px'
     input_dir = work_dir + '/train'
-    output_dir = os.path.join(f'landmark_over_image_{"_".join([f"{k}_{v}" for k, v in option.items()])}', input_dir)
+    output_dir = os.path.join(work_dir, f'landmark_over_image_{"_".join([f"{k}_{v}" for k, v in option.items()])}')
     process_images(option, input_dir, output_dir)
