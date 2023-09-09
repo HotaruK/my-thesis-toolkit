@@ -9,6 +9,7 @@ mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
 landmark_drawing_spec = mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=0, circle_radius=0)
 connection_drawing_spec = mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1)
+num_workers = multiprocessing.cpu_count()
 
 # landmark data for pose(body and arms)
 pose_landmarks = [mp_holistic.PoseLandmark.LEFT_SHOULDER,
@@ -69,7 +70,6 @@ def _process_image(output_options: dict, image_file: str, output_name: str):
 def process_images(option: dict, input_dir: str, output_dir: str):
     total_files = sum([len(files) for r, d, files in os.walk(input_dir)])
     progress_bar = tqdm(total=total_files)
-    num_workers = min(5, multiprocessing.cpu_count())
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = []
@@ -94,7 +94,7 @@ if __name__ == '__main__':
         'hands': True,
         'pose': True,
     }
-    work_dir = 'C:\\Users\\Administrator\\Desktop\\PHOENIX-2014-T-release-v3\\PHOENIX-2014-T\\features\\fullFrame-210x260px'
+    work_dir = ''
     input_dir = work_dir + '/train'
     output_dir = os.path.join(work_dir, f'landmark_over_image_{"_".join([f"{k}_{v}" for k, v in option.items()])}')
     process_images(option, input_dir, output_dir)
