@@ -6,7 +6,7 @@ import gzip
 import pickle
 
 
-def extract_features(base_dir, video_dir, span, stride, model_path, device, origin_data):
+def extract_features(base_dir, video_dir, model_path, device, origin_data):
     loaded_object = torch.load(model_path)
     model = InceptionI3d(400, in_channels=3)
     model.load_state_dict(loaded_object)
@@ -33,7 +33,6 @@ def extract_features(base_dir, video_dir, span, stride, model_path, device, orig
     output_dir = os.path.join(base_dir, 'output')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        os.makedirs(output_dir + f'\\span={span}')
 
     op = {
         'name': origin_data['name'],
@@ -43,7 +42,7 @@ def extract_features(base_dir, video_dir, span, stride, model_path, device, orig
         'sign': features,
     }
 
-    output_file = os.path.join(output_dir, f'span={span}\\{video_dir}.pt')
+    output_file = os.path.join(output_dir, f'{video_dir}.pt')
     torch.save(op, output_file)
 
 
@@ -67,5 +66,5 @@ if __name__ == '__main__':
         for i in dataset:
             if i.get('name') == prefix + video_dir:
                 origin = i
-        extract_features(base_dir=base_dir, video_dir=video_dir, span=8, stride=2, model_path=model_path, device=device,
+        extract_features(base_dir=base_dir, video_dir=video_dir, model_path=model_path, device=device,
                          origin_data=origin)
