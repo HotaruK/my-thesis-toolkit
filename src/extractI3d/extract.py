@@ -64,10 +64,8 @@ if __name__ == '__main__':
     video_dirs = os.listdir(base_dir)
     video_dirs = [video_dir for video_dir in video_dirs if os.path.isdir(os.path.join(base_dir, video_dir))]
 
+    v_names = {e['name']: i for i, e in enumerate(dataset)}
     for video_dir in tqdm(video_dirs):
-        origin = None
-        for i in dataset:
-            if i.get('name') == prefix + video_dir:
-                origin = i
+        origin = dataset[v_names[prefix + video_dir]]
         extract_features(base_dir=base_dir, video_dir=video_dir, model_path=model_path, device=device,
                          origin_data=origin)
