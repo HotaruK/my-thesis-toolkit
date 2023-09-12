@@ -2,9 +2,11 @@ import torch
 import cv2
 import os
 from pytorchi3d import InceptionI3d
+import gzip
+import pickle
 
 
-def extract_features(base_dir, video_dir, span, stride, model_path, device):
+def extract_features(base_dir, video_dir, span, stride, model_path, device, origin_data):
     loaded_object = torch.load(model_path)
     model = InceptionI3d(400, in_channels=3)
     model.load_state_dict(loaded_object)
@@ -33,8 +35,16 @@ def extract_features(base_dir, video_dir, span, stride, model_path, device):
         os.makedirs(output_dir)
         os.makedirs(output_dir + f'\\span={span}')
 
+    op = {
+        'name': origin_data['name'],
+        'signer': origin_data['signer'],
+        'gloss': origin_data['gloss'],
+        'text': origin_data['text'],
+        'sign': features,
+    }
+
     output_file = os.path.join(output_dir, f'span={span}\\{video_dir}.pt')
-    torch.save(features, output_file)
+    torch.save(op, output_file)
 
 
 if __name__ == '__main__':
@@ -43,8 +53,19 @@ if __name__ == '__main__':
 
     base_dir = ''
     model_path = ''
+    original_pklgz = ''
+    prefix = ''
+
+    dataset = None
+    with gzip.open(original_pklgz, 'rb') as f:
+        dataset = pickle.load(f)
 
     for video_dir in os.listdir(base_dir):
         if not os.path.isdir(os.path.join(base_dir, video_dir)):
             continue
-        extract_features(base_dir=base_dir, video_dir=video_dir, span=8, stride=2, model_path=model_path, device=device)
+        origin = None
+        for i in dataset:
+            if i.get('name') == prefix + video_dir:
+                origin = i
+        extract_features(base_dir=base_dir, video_dir=video_dir, span=8, stride=2, model_path=model_path, device=device,
+                         origin_data=origin)
