@@ -4,6 +4,7 @@ import os
 from pytorchi3d import InceptionI3d
 import gzip
 import pickle
+from tqdm import tqdm
 
 
 def extract_features(base_dir, video_dir, model_path, device, origin_data):
@@ -24,11 +25,11 @@ def extract_features(base_dir, video_dir, model_path, device, origin_data):
         frame = torch.from_numpy(frame)
         frames.append(frame)
     frames = torch.stack(frames)
-    print(f"Shape of frames tensor: {frames.shape}")
 
     frames = frames.permute(3, 0, 1, 2).unsqueeze(0).float()
     frames = frames.to(device)
-    features = model(frames)
+
+    features = model.extract_features(frames).permute(0, 2, 1, 3, 4).contiguous().view(-1, 1024)
 
     output_dir = os.path.join(base_dir, 'output')
     if not os.path.exists(output_dir):
@@ -59,9 +60,10 @@ if __name__ == '__main__':
     with gzip.open(original_pklgz, 'rb') as f:
         dataset = pickle.load(f)
 
-    for video_dir in os.listdir(base_dir):
-        if not os.path.isdir(os.path.join(base_dir, video_dir)):
-            continue
+    video_dirs = os.listdir(base_dir)
+    video_dirs = [video_dir for video_dir in video_dirs if os.path.isdir(os.path.join(base_dir, video_dir))]
+
+    for video_dir in tqdm(video_dirs):
         origin = None
         for i in dataset:
             if i.get('name') == prefix + video_dir:
