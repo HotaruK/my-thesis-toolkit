@@ -30,6 +30,7 @@ def extract_features(base_dir, video_dir, model_path, device, origin_data):
     frames = frames.to(device)
 
     features = model.extract_features(frames).permute(0, 2, 1, 3, 4).contiguous().view(-1, 1024)
+    features = features.to('cpu')
 
     output_dir = os.path.join(base_dir, 'output')
     if not os.path.exists(output_dir):
