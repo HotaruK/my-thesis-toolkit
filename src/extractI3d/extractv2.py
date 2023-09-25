@@ -7,12 +7,16 @@ import pickle
 
 
 def extract_features(base_dir, video_dir, span, model_path, device, origin_data):
+    assert span % 2 == 0, 'Span must be a number divisible by 2'
+
+    # model init
     loaded_object = torch.load(model_path)
     model = InceptionI3d(400, in_channels=3)
     model.load_state_dict(loaded_object)
     model.eval()
     model = model.to(device)
 
+    # load video
     frames = []
     video_path = os.path.join(base_dir, video_dir)
     for file in sorted(os.listdir(video_path)):
@@ -24,11 +28,19 @@ def extract_features(base_dir, video_dir, span, model_path, device, origin_data)
         frame = torch.from_numpy(frame)
         frames.append(frame)
     frames = torch.stack(frames)
-    print(f"Shape of frames tensor: {frames.shape}")
+    frame_len = len(frames)
 
-    frames = frames.permute(3, 0, 1, 2).unsqueeze(0).float()
-    frames = frames.to(device)
-    features = model(frames)
+    # extract i3d with span
+    features_list = []
+    span_half = span // 2
+    for i in range(frame_len):
+        start = max(0, i - span_half)
+        end = min(len(frames), i + span_half + 1)
+        span_frames = frames[start:end]
+        span_frames = span_frames.permute(3, 0, 1, 2).unsqueeze(0).float()
+        span_frames = span_frames.to(device)
+        features = model(span_frames)
+        features_list.append(features)
 
     output_dir = os.path.join(base_dir, 'output')
     if not os.path.exists(output_dir):
@@ -40,7 +52,7 @@ def extract_features(base_dir, video_dir, span, model_path, device, origin_data)
         'signer': origin_data['signer'],
         'gloss': origin_data['gloss'],
         'text': origin_data['text'],
-        'sign': features,
+        'sign': torch.stack(features_list),
     }
 
     output_file = os.path.join(output_dir, f'span={span}\\{video_dir}.pt')
