@@ -4,10 +4,9 @@ import os
 from pytorchi3d import InceptionI3d
 import gzip
 import pickle
-from tqdm import tqdm
 
 
-def extract_features(base_dir, video_dir, model_path, device, origin_data):
+def extract_features(base_dir, video_dir, span, model_path, device, origin_data):
     loaded_object = torch.load(model_path)
     model = InceptionI3d(400, in_channels=3)
     model.load_state_dict(loaded_object)
@@ -25,16 +24,16 @@ def extract_features(base_dir, video_dir, model_path, device, origin_data):
         frame = torch.from_numpy(frame)
         frames.append(frame)
     frames = torch.stack(frames)
+    print(f"Shape of frames tensor: {frames.shape}")
 
     frames = frames.permute(3, 0, 1, 2).unsqueeze(0).float()
     frames = frames.to(device)
-
-    features = model.extract_features(frames).permute(0, 2, 1, 3, 4).contiguous().view(-1, 1024)
-    features = features.to('cpu')
+    features = model(frames)
 
     output_dir = os.path.join(base_dir, 'output')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+        os.makedirs(output_dir + f'\\span={span}')
 
     op = {
         'name': origin_data['name'],
@@ -44,7 +43,7 @@ def extract_features(base_dir, video_dir, model_path, device, origin_data):
         'sign': features,
     }
 
-    output_file = os.path.join(output_dir, f'{video_dir}.pt')
+    output_file = os.path.join(output_dir, f'span={span}\\{video_dir}.pt')
     torch.save(op, output_file)
 
 
@@ -55,17 +54,18 @@ if __name__ == '__main__':
     base_dir = ''
     model_path = ''
     original_pklgz = ''
-    prefix = 'train/'
+    prefix = 'dev/'
 
     dataset = None
     with gzip.open(original_pklgz, 'rb') as f:
         dataset = pickle.load(f)
 
-    video_dirs = os.listdir(base_dir)
-    video_dirs = [video_dir for video_dir in video_dirs if os.path.isdir(os.path.join(base_dir, video_dir))]
-
-    v_names = {e['name']: i for i, e in enumerate(dataset)}
-    for video_dir in tqdm(video_dirs):
-        origin = dataset[v_names[prefix + video_dir]]
-        extract_features(base_dir=base_dir, video_dir=video_dir, model_path=model_path, device=device,
+    for video_dir in os.listdir(base_dir):
+        if not os.path.isdir(os.path.join(base_dir, video_dir)):
+            continue
+        origin = None
+        for i in dataset:
+            if i.get('name') == prefix + video_dir:
+                origin = i
+        extract_features(base_dir=base_dir, video_dir=video_dir, span=8, model_path=model_path, device=device,
                          origin_data=origin)
