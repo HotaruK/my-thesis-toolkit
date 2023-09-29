@@ -3,6 +3,7 @@ import torch
 import os
 import gzip
 import pickle
+import shutil
 from tqdm import tqdm
 
 
@@ -37,13 +38,17 @@ def _convert(feature, origin, output_dir, video_name):
 
 
 def _process(npz_dir, original_pklgz, output_dir, prefix):
+    print('Initial process...')
+    tmp_dir = os.path.join(output_dir, 'tmp')
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+
     print('Reading original ds...')
     origin_ds, origin_v_names = _get_original_dataset(original_pklgz)
 
     def _get_origin(vn):
         n = prefix + '/' + vn
         origin = origin_ds[origin_v_names[n]]
-        del origin_ds[origin_v_names[n]]
         del origin_v_names[n]
         return origin
 
@@ -58,8 +63,7 @@ def _process(npz_dir, original_pklgz, output_dir, prefix):
             _convert(feature, origin, output_dir, video_name)
 
     # compile all pt files
-    print("final step, making a pickle gzip file...")
-    tmp_dir = os.path.join(output_dir, 'tmp')
+    print("Making a pickle gzip file...")
 
     data_list = []
     for file in tqdm(os.listdir(tmp_dir)):
@@ -68,8 +72,12 @@ def _process(npz_dir, original_pklgz, output_dir, prefix):
             data = torch.load(file_path)
             data_list.append(data)
 
+    print("Finalizing...")
     with gzip.open(os.path.join(output_dir, f'{prefix}.pkl.gz'), 'wb') as f:
         pickle.dump(data_list, f)
+    shutil.rmtree(tmp_dir)
+
+    print(f"Done! Check {output_dir}")
 
 
 if __name__ == '__main__':
