@@ -72,7 +72,8 @@ def __sc_drawing_face(image, results):
                        sc_landmark_drawing_spec.thickness)
 
 
-def _generate_single_channel_image(output_options, annotated_image, results, output_name):
+def _generate_single_channel_image(output_options, image_size, results, output_name):
+    annotated_image = np.zeros((image_size[0], image_size[1], 3), dtype=np.uint8)
     if output_options['pose']:
         __sc_drawing_pose(annotated_image, results)
 
@@ -89,8 +90,22 @@ def _generate_single_channel_image(output_options, annotated_image, results, out
     cv2.imwrite(output_name, annotated_image)
 
 
-def _generate_bkbg_rgb():
-    pass
+def _generate_bkbg_rgb(output_options, image_size, results, output_name):
+    annotated_image = np.zeros((image_size[0], image_size[1], 3), dtype=np.uint8)
+    if output_options['pose']:
+        __sc_drawing_pose(annotated_image, results)
+
+    if output_options['hands']:
+        mp_drawing.draw_landmarks(annotated_image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
+                                  sc_landmark_drawing_spec, sc_connection_drawing_spec)
+        mp_drawing.draw_landmarks(annotated_image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
+                                  sc_landmark_drawing_spec, sc_connection_drawing_spec)
+
+    if output_options['face']:
+        __sc_drawing_face(annotated_image, results)
+
+    annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2GRAY)
+    cv2.imwrite(output_name, annotated_image)
 
 
 def _process_image(output_options: dict, image_file: str, output_name: str):
@@ -100,14 +115,14 @@ def _process_image(output_options: dict, image_file: str, output_name: str):
     with mp_holistic.Holistic(static_image_mode=True, refine_face_landmarks=True) as holistic:
         results = holistic.process(image)
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-    # single channel image
     image_height, image_width, _ = image.shape
-    annotated_image = np.zeros((image_height, image_width, 3), dtype=np.uint8)
-    _generate_single_channel_image(output_options, annotated_image, results, output_name)
+    image_size = (image_height, image_width)
+
+    # # single channel image
+    # _generate_single_channel_image(output_options, image_size, results, output_name)
 
     # black background + color annotation
-    pass
+    _generate_bkbg_rgb(output_options, image_size, results, output_name)
 
     # original image + color annotation
     pass
