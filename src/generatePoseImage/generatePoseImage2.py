@@ -61,6 +61,9 @@ face_landmarks = [
 
 
 def __sc_drawing_pose(image, results):
+    if results.pose_landmarks is None:
+        return
+
     for landmark in pose_landmarks:
         landmark_point = results.pose_landmarks.landmark[landmark]
         loc = (int(landmark_point.x * image.shape[1]), int(landmark_point.y * image.shape[0]))
@@ -77,6 +80,9 @@ def __sc_drawing_pose(image, results):
 
 
 def __sc_drawing_face(image, results):
+    if results.face_landmarks is None:
+        return
+
     for landmark_group in face_landmarks:
         for i in range(len(landmark_group) - 1):
             start_point = results.face_landmarks.landmark[landmark_group[i]]
@@ -112,6 +118,9 @@ def _generate_single_channel_image(output_options, image_size, results, output_n
 
 
 def __drawing_pose(image, results):
+    if results.pose_landmarks is None:
+        return
+
     for landmark in pose_landmarks:
         landmark_point = results.pose_landmarks.landmark[landmark]
         loc = (int(landmark_point.x * image.shape[1]), int(landmark_point.y * image.shape[0]))
@@ -151,57 +160,61 @@ def __drawing_pose(image, results):
 
 
 def __drawing_hand_landmarks(image, hand_landmarks, hand_connections):
-    if hand_landmarks is not None:
-        # Draw the landmarks
-        for i in range(0, 21):
-            landmark_point = hand_landmarks.landmark[i]
-            loc = (int(landmark_point.x * image.shape[1]), int(landmark_point.y * image.shape[0]))
-            if i in palm_landmarks:
-                cv2.circle(image, loc, palm_drawing_spec.circle_radius, palm_drawing_spec.color,
-                           palm_drawing_spec.thickness)
-            elif i <= 4:
-                cv2.circle(image, loc, thumb_drawing_spec.circle_radius, thumb_drawing_spec.color,
-                           thumb_drawing_spec.thickness)
-            elif i <= 8:
-                cv2.circle(image, loc, index_finger_drawing_spec.circle_radius, index_finger_drawing_spec.color,
-                           index_finger_drawing_spec.thickness)
-            elif i <= 12:
-                cv2.circle(image, loc, middle_finger_drawing_spec.circle_radius, middle_finger_drawing_spec.color,
-                           middle_finger_drawing_spec.thickness)
-            elif i <= 16:
-                cv2.circle(image, loc, ring_finger_drawing_spec.circle_radius, ring_finger_drawing_spec.color,
-                           ring_finger_drawing_spec.thickness)
-            else:
-                cv2.circle(image, loc, pinky_drawing_spec.circle_radius, pinky_drawing_spec.color,
-                           pinky_drawing_spec.thickness)
+    if hand_landmarks is None or hand_landmarks.landmark is None:
+        return
+    # Draw the landmarks
+    for i in range(0, 21):
+        landmark_point = hand_landmarks.landmark[i]
+        loc = (int(landmark_point.x * image.shape[1]), int(landmark_point.y * image.shape[0]))
+        if i in palm_landmarks:
+            cv2.circle(image, loc, palm_drawing_spec.circle_radius, palm_drawing_spec.color,
+                       palm_drawing_spec.thickness)
+        elif i <= 4:
+            cv2.circle(image, loc, thumb_drawing_spec.circle_radius, thumb_drawing_spec.color,
+                       thumb_drawing_spec.thickness)
+        elif i <= 8:
+            cv2.circle(image, loc, index_finger_drawing_spec.circle_radius, index_finger_drawing_spec.color,
+                       index_finger_drawing_spec.thickness)
+        elif i <= 12:
+            cv2.circle(image, loc, middle_finger_drawing_spec.circle_radius, middle_finger_drawing_spec.color,
+                       middle_finger_drawing_spec.thickness)
+        elif i <= 16:
+            cv2.circle(image, loc, ring_finger_drawing_spec.circle_radius, ring_finger_drawing_spec.color,
+                       ring_finger_drawing_spec.thickness)
+        else:
+            cv2.circle(image, loc, pinky_drawing_spec.circle_radius, pinky_drawing_spec.color,
+                       pinky_drawing_spec.thickness)
 
-        # Draw the connections
-        for connection in hand_connections:
-            start_point = hand_landmarks.landmark[connection[0]]
-            end_point = hand_landmarks.landmark[connection[1]]
-            start_loc = (int(start_point.x * image.shape[1]), int(start_point.y * image.shape[0]))
-            end_loc = (int(end_point.x * image.shape[1]), int(end_point.y * image.shape[0]))
-            if (connection[0], connection[1]) in palm_connections or (connection[1], connection[0]) in palm_connections:
-                cv2.line(image, start_loc, end_loc, palm_drawing_spec.color,
-                         palm_drawing_spec.thickness)
-            elif connection[0] <= 4 or connection[1] <= 4:
-                cv2.line(image, start_loc, end_loc, thumb_drawing_spec.color,
-                         thumb_drawing_spec.thickness)
-            elif connection[0] <= 8 or connection[1] <= 8:
-                cv2.line(image, start_loc, end_loc, index_finger_drawing_spec.color,
-                         index_finger_drawing_spec.thickness)
-            elif connection[0] <= 12 or connection[1] <= 12:
-                cv2.line(image, start_loc, end_loc, middle_finger_drawing_spec.color,
-                         middle_finger_drawing_spec.thickness)
-            elif connection[0] <= 16 or connection[1] <= 16:
-                cv2.line(image, start_loc, end_loc, ring_finger_drawing_spec.color,
-                         ring_finger_drawing_spec.thickness)
-            else:
-                cv2.line(image, start_loc, end_loc, pinky_drawing_spec.color,
-                         pinky_drawing_spec.thickness)
+    # Draw the connections
+    for connection in hand_connections:
+        start_point = hand_landmarks.landmark[connection[0]]
+        end_point = hand_landmarks.landmark[connection[1]]
+        start_loc = (int(start_point.x * image.shape[1]), int(start_point.y * image.shape[0]))
+        end_loc = (int(end_point.x * image.shape[1]), int(end_point.y * image.shape[0]))
+        if (connection[0], connection[1]) in palm_connections or (connection[1], connection[0]) in palm_connections:
+            cv2.line(image, start_loc, end_loc, palm_drawing_spec.color,
+                     palm_drawing_spec.thickness)
+        elif connection[0] <= 4 or connection[1] <= 4:
+            cv2.line(image, start_loc, end_loc, thumb_drawing_spec.color,
+                     thumb_drawing_spec.thickness)
+        elif connection[0] <= 8 or connection[1] <= 8:
+            cv2.line(image, start_loc, end_loc, index_finger_drawing_spec.color,
+                     index_finger_drawing_spec.thickness)
+        elif connection[0] <= 12 or connection[1] <= 12:
+            cv2.line(image, start_loc, end_loc, middle_finger_drawing_spec.color,
+                     middle_finger_drawing_spec.thickness)
+        elif connection[0] <= 16 or connection[1] <= 16:
+            cv2.line(image, start_loc, end_loc, ring_finger_drawing_spec.color,
+                     ring_finger_drawing_spec.thickness)
+        else:
+            cv2.line(image, start_loc, end_loc, pinky_drawing_spec.color,
+                     pinky_drawing_spec.thickness)
 
 
 def __drawing_face(image, results):
+    if results.face_landmarks is None:
+        return
+
     for landmark_group in face_landmarks:
         if len(landmark_group) == 1:
             # Draw circles for the eyes
