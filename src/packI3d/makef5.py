@@ -2,9 +2,9 @@ import os
 import numpy as np
 
 
-def marge_tensor(filename, file_path1, file_path2, output1, output2):
-    data1 = np.load(file_path1)
-    data2 = np.load(file_path2)
+def marge_tensor(filename, file_path1, file_path2, output_dir1, output_dir2):
+    data1 = np.load(file_path1, allow_pickle=True)
+    data2 = np.load(file_path2, allow_pickle=True)
     data1 = data1.f.feature
     data2 = data2.f.feature
     try:
@@ -15,12 +15,15 @@ def marge_tensor(filename, file_path1, file_path2, output1, output2):
             return
 
     # (2, frames, 1024)
-    new_tensor1 = np.stack((data1, data2))
+    new_tensor1 = np.concatenate((data1[np.newaxis, :], data2[np.newaxis, :]), axis=0)
+    assert new_tensor1.shape == (2,) + data1.shape
+
     # (1, frames, 2048)
     new_tensor2 = np.concatenate((data1, data2), axis=2)
+    assert new_tensor2.shape == data1.shape[:-1] + (2048,)
 
-    np.savez(f'{output1}/{filename}', new_tensor1)
-    np.savez(f'{output2}/{filename}', new_tensor2)
+    np.savez(f'{output_dir1}/{filename}', new_tensor1)
+    np.savez(f'{output_dir2}/{filename}', new_tensor2)
 
 
 def process(input_dir1, input_dir2, output_dir1, output_dir2):
