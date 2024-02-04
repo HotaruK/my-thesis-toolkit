@@ -1,6 +1,5 @@
 import os
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 import pickle
 
@@ -55,7 +54,7 @@ def _filling_missing_frames(data, missings, key):
         start = frame_no
         end = frame_no
         while end < data_len:
-            if end not in missings:
+            if end + 1 not in missings:
                 break
             else:
                 processed.append(end + 1)
@@ -77,30 +76,48 @@ def _filling_missing_frames(data, missings, key):
                 data[start][key] = data[start - 1][key]
         # missing multiple frames
         else:
-            if start == 0:
+            if start <= 0:
                 # missing the first frame (just copy)
-                copy_base = data[end + 1][key]
+                try:
+                    copy_base = data[end + 1][key]
+                except IndexError as e:
+                    print(start, end, data_len)
+                    raise e
                 for frame_idx in frame_list:
                     data[frame_idx][key] = copy_base
-            elif end == (data_len - 1):
+            elif end >= (data_len - 1):
                 # missing the last frame (just copy)
                 copy_base = data[start - 1][key]
                 for frame_idx in frame_list:
-                    data[frame_idx][key] = copy_base
+                    try:
+                        data[frame_idx][key] = copy_base
+                    except IndexError as e:
+                        print(frame_idx, key)
+                        raise e
             else:
                 mid_idx = total_frames // 2
                 prev = start - 1
                 nxt = end + 1
                 for i in range(mid_idx, -1, -1):
                     current = frame_list[i]
-                    data[current][key] = _get_average(data[prev][key], data[nxt][key])
+                    if prev >= 0:
+                        try:
+                            data[current][key] = _get_average(data[prev][key], data[nxt][key])
+                        except IndexError as e:
+                            print(f"current={current}, key={key}, prev={prev}, next={nxt}, data_len={data_len}")
+                            raise e
+                    else:
+                        data[current][key] = data[current + 1][key]
                     nxt = current
 
                 prev = frame_list[mid_idx]
                 nxt = end + 1
                 for i in range(mid_idx + 1, total_frames):
                     current = frame_list[i]
-                    data[current][key] = _get_average(data[prev][key], data[nxt][key])
+                    if nxt < data_len:
+                        data[current][key] = _get_average(data[prev][key], data[nxt][key])
+                    else:
+                        data[current][key] = data[current - 1][key]
                     prev = current
 
 
@@ -111,13 +128,13 @@ def _process_file(file_path, file_name, output_dir):
     # make lists of missing frames
     missings = {'pose': [], 'face': [], 'left_hand': [], 'right_hand': []}
     for key, img in enumerate(data):
-        if img['pose'] is NULL_OBJ_POSE:
+        if img['pose'] == NULL_OBJ_POSE:
             missings['pose'].append(key)
-        if img['face'] is NULL_OBJ_FACE:
+        if img['face'] == NULL_OBJ_FACE:
             missings['face'].append(key)
-        if img['left_hand'] is NULL_OBJ_HAND:
+        if img['left_hand'] == NULL_OBJ_HAND:
             missings['left_hand'].append(key)
-        if img['right_hand'] is NULL_OBJ_HAND:
+        if img['right_hand'] == NULL_OBJ_HAND:
             missings['right_hand'].append(key)
 
     # process missing frames
@@ -133,22 +150,21 @@ def _process_file(file_path, file_name, output_dir):
     } for img in data]
 
     # output
-    with open(os.path.join(output_dir, file_name), 'wb') as f:
-        pickle.dump(clean_data, f)
+    with open(os.path.join(output_dir, file_name), 'wb') as ff:
+        pickle.dump(clean_data, ff)
 
 
-def process_dataset(input_dir, output_dir):
+def process_dataset(input_dir, output_dir, blacklist):
     files = [f for f in os.listdir(input_dir) if f.endswith('.pickle')]
     progress_bar = tqdm(total=len(files))
 
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = []
-        for f in files:
+    for f in files:
+        # Videos in blacklist are excluded from the dataset due to low quality of pose estimation
+        fn, _ = os.path.splitext(f)
+        if fn not in blacklist:
             file_path = os.path.join(input_dir, f)
-            future = executor.submit(_process_file, file_path, f, output_dir)
-            futures.append(future)
-        for future in as_completed(futures):
-            progress_bar.update(1)
+            _process_file(file_path, f, output_dir)
+        progress_bar.update(1)
 
     progress_bar.close()
 
@@ -157,10 +173,12 @@ if __name__ == '__main__':
     root_dir = ''
     output_root_dir = ''
     types = ['test', 'train', 'dev']
+    blacklist_dir = ''
 
     for t in types:
         work_dir = f'{root_dir}/{t}'
         output_dir = f'{output_root_dir}/{t}'
+        blacklist = _get_blacklist(blacklist_dir, t)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        process_dataset(work_dir, output_dir)
+        process_dataset(work_dir, output_dir, blacklist)

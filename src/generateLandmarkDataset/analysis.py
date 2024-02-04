@@ -37,7 +37,7 @@ def _check_file(file_path):
 def process_dataset(input_dir, output_dir, type):
     files = [f for f in os.listdir(input_dir) if f.endswith('.pickle')]
     progress_bar = tqdm(total=len(files) + 1)
-    detail_log = output_dir + f'{type}_analysis.log'
+    detail_log = os.path.join(output_dir, f'{type}_analysis.log')
 
     cnt = {'pose': 0, 'face': 0, 'left_hand': 0, 'right_hand': 0}
     video_cnt = {'pose': 0, 'face': 0, 'left_hand': 0, 'right_hand': 0}
