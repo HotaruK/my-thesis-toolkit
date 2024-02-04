@@ -15,13 +15,29 @@ NULL_OBJ_FACE = [{'x': None, 'y': None, 'z': None} for _ in range(NUMBER_OF_FACE
 NULL_OBJ_HAND = [{'x': None, 'y': None, 'z': None} for _ in range(NUMBER_OF_HAND_LANDMARKS)]
 
 
+def _get_blacklist(blacklist_dir, key):
+    p = os.path.join(blacklist_dir, key + '.txt')
+    with open(p, 'r') as f:
+        lines = f.readlines()
+        return [line.strip() for line in lines]
+
+
 def _extract_x_and_y(landmarks):
-    return [{k: v for k, v in p.items() if k != 'z'} for p in landmarks]
+    return [{k: v for k, v in p.items() if k in ['x', 'y']} for p in landmarks]
 
 
 def _get_average(start, end):
-    assert len(start) == end(end)
-    average = [{(start[i][j] + end[i][j]) / 2 for j in ['x', 'y', 'z']} for i in range(len(start))]
+    assert len(start) == len(end)
+    average = []
+    for i in range(len(start)):
+        o = {}
+        for j in ['x', 'y']:
+            try:
+                o[j] = (start[i][j] + end[i][j]) / 2
+            except TypeError as e:
+                print(start[i], end[i])
+                raise e
+        average.append(o)
     return average
 
 
