@@ -9,8 +9,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
 num_workers = multiprocessing.cpu_count()
-xception_model = xception.Xception(weights='imagenet', include_top=False)
-inception_model = inception_resnet_v2.InceptionResNetV2(weights='imagenet', include_top=False)
+xception_model = xception.Xception(weights='imagenet', include_top=False, pooling='max')
+inception_model = inception_resnet_v2.InceptionResNetV2(weights='imagenet', include_top=False, pooling='max')
 
 
 def extract_feature_by_xception(img_path):
@@ -34,6 +34,10 @@ def extract_feature_by_inception_resnet_v2(img_path):
 
 
 def _process_video(input_dir, video_name, output_dir, model_func):
+    output_file = os.path.join(output_dir, f'{video_name}.npy')
+    if os.path.exists(output_file):
+        return
+
     frames = {}
     files = os.listdir(input_dir)
     for file in files:
@@ -42,8 +46,7 @@ def _process_video(input_dir, video_name, output_dir, model_func):
             frames[file] = model_func(input_file)
 
     frames = [v for k, v in sorted(frames.items(), key=lambda x: x[0])]
-
-    np.save(os.path.join(output_dir, f'{video_name}.npy'), frames)
+    np.save(output_file, frames)
 
 
 def process_dataset(input_dir, output_dir, model_func):
