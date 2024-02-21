@@ -21,7 +21,7 @@ def _get_face_points(landmarks, minimize_face_points=False):
     return result
 
 
-def marge_tensor(i3d, lmfile, minimize_face_points=False):
+def marge_dataset(i3d, lmfile, minimize_face_points=False):
     lm = np.load(lmfile, allow_pickle=True)
 
     pose = []
@@ -29,10 +29,10 @@ def marge_tensor(i3d, lmfile, minimize_face_points=False):
     right_hand = []
     face = []
     for i in range(len(lm)):
-        pose.append(lm[i]['pose'])
-        left_hand.append(lm[i]['left_hand'])
-        right_hand.append(lm[i]['right_hand'])
-        face.append(_get_face_points(lm[i]['face'], minimize_face_points))
+        pose.append([[p['x'], p['y']] for p in lm[i]['pose']])
+        left_hand.append([[p['x'], p['y']] for p in lm[i]['left_hand']])
+        right_hand.append([[p['x'], p['y']] for p in lm[i]['right_hand']])
+        face.append([[p['x'], p['y']] for p in _get_face_points(lm[i]['face'], minimize_face_points)])
 
     i3d['pose'] = torch.tensor(np.array(pose))
     i3d['left_hand'] = torch.tensor(np.array(left_hand))
@@ -62,7 +62,7 @@ def _process_dataset(input_dir, output_dir, i3d_file_path, type, minimize_face_p
         file_name, _ = os.path.splitext(ff)
 
         i3d_obj = find_and_pop_name_by_object(i3d_ds, f'{type}/{file_name}')
-        result.append(marge_tensor(i3d_obj, lm_file_path, minimize_face_points))
+        result.append(marge_dataset(i3d_obj, lm_file_path, minimize_face_points))
         progress_bar.update(1)
 
     with gzip.open(os.path.join(output_dir, f'ex2.{type}.pkl.gz'), 'wb') as f:
