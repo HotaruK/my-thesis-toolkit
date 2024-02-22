@@ -1,14 +1,11 @@
 from keras.applications import xception
 from keras.applications import inception_resnet_v2
-from keras.preprocessing import image
+import keras.utils as image
 from PIL import Image
 import numpy as np
 import os
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
 
-num_workers = multiprocessing.cpu_count()
 xception_model = xception.Xception(weights='imagenet', include_top=False, pooling='max')
 inception_model = inception_resnet_v2.InceptionResNetV2(weights='imagenet', include_top=False, pooling='max')
 
@@ -20,6 +17,8 @@ def extract_feature_by_xception(img_path):
     x = np.expand_dims(x, axis=0)
     x = xception.preprocess_input(x)
     f = xception_model.predict(x)
+    im.close()
+    del x
     return f
 
 
@@ -30,6 +29,8 @@ def extract_feature_by_inception_resnet_v2(img_path):
     x = np.expand_dims(x, axis=0)
     x = inception_resnet_v2.preprocess_input(x)
     f = inception_model.predict(x)
+    im.close()
+    del x
     return f
 
 
@@ -55,14 +56,10 @@ def process_dataset(input_dir, output_dir, model_func):
     total_videos = len(dirs)
     progress_bar = tqdm(total=total_videos)
 
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = []
-        for d in dirs:
-            dir_path = os.path.join(input_dir, d)
-            future = executor.submit(_process_video, dir_path, d, output_dir, model_func)
-            futures.append(future)
-        for future in as_completed(futures):
-            progress_bar.update(1)
+    for d in dirs:
+        dir_path = os.path.join(input_dir, d)
+        _process_video(dir_path, d, output_dir, model_func)
+        progress_bar.update(1)
 
     progress_bar.close()
     print(f'finish: input_dir={input_dir}')
